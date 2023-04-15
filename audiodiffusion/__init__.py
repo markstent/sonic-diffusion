@@ -15,7 +15,7 @@ VERSION = "1.5.2"
 class AudioDiffusion:
     def __init__(
         self,
-        model_id: str = "teticio/audio-diffusion-256",
+        model_id: str,
         cuda: bool = torch.cuda.is_available(),
         progress_bar: Iterable = tqdm,
     ):
