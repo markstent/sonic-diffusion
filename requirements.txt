@@ -4,9 +4,7 @@ Pillow
 diffusers>=0.12.0
 librosa
 datasets>=2.9.0
-gradio
-streamlit
-tensorboard
+wandb
 accelerate
 torchvision
 transformers
