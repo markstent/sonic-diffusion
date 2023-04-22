@@ -32,6 +32,10 @@ Sonic Diffusion uses the following libraries and resources:
 - NumPy: [https://numpy.org/](https://numpy.org/)
 - Audio Diffusion: [Audio Diffusion Github](https://github.com/teticio/audio-diffusion)
 
+## Acknowledgement
+
+Thank you to [Robert Dargavel Smith](https://github.com/teticio) for all the help and inspiration for this project.
+
 ## License
 
 Sonic Diffusion is licensed under the GNU License. See the `LICENSE` file for more information.
