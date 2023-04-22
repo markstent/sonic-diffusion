@@ -1,3 +1,5 @@
+# Package based on https://github.com/teticio/audio-diffusion
+
 from typing import Iterable, Tuple
 
 import numpy as np
@@ -7,22 +9,22 @@ from PIL import Image
 from tqdm.auto import tqdm
 
 # from diffusers import AudioDiffusionPipeline
-from .pipeline_audio_diffusion import AudioDiffusionPipeline
+from .pipeline_sonic_diffusion import AudioDiffusionPipeline
 
-VERSION = "1.5.3"
+VERSION = "1.0"
 
 
-class AudioDiffusion:
+class SonicDiffusion:
     def __init__(
         self,
-        model_id: str = "teticio/audio-diffusion-256",
+        model_id: str = "None",
         cuda: bool = torch.cuda.is_available(),
         progress_bar: Iterable = tqdm,
     ):
         """Class for generating audio using De-noising Diffusion Probabilistic Models.
 
         Args:
-            model_id (String): name of model (local directory or Hugging Face Hub)
+            model_id (String): name of model (local directory)
             cuda (bool): use CUDA?
             progress_bar (iterable): iterable callback for progress updates or None
         """
@@ -39,7 +41,6 @@ class AudioDiffusion:
         step_generator: torch.Generator = None,
         eta: float = 0,
         noise: torch.Tensor = None,
-        encoding: torch.Tensor = None,
     ) -> Tuple[Image.Image, Tuple[int, np.ndarray]]:
         """Generate random mel spectrogram and convert to audio.
 
@@ -49,7 +50,6 @@ class AudioDiffusion:
             step_generator (torch.Generator): random number generator used to de-noise or None
             eta (float): parameter between 0 and 1 used with DDIM scheduler
             noise (torch.Tensor): noisy image or None
-            encoding (`torch.Tensor`): for UNet2DConditionModel shape (batch_size, seq_length, cross_attention_dim)
 
         Returns:
             PIL Image: mel spectrogram
@@ -62,7 +62,6 @@ class AudioDiffusion:
             step_generator=step_generator,
             eta=eta,
             noise=noise,
-            encoding=encoding,
             return_dict=False,
         )
         return images[0], (sample_rate, audios[0])
@@ -79,7 +78,6 @@ class AudioDiffusion:
         mask_end_secs: float = 0,
         step_generator: torch.Generator = None,
         eta: float = 0,
-        encoding: torch.Tensor = None,
         noise: torch.Tensor = None,
     ) -> Tuple[Image.Image, Tuple[int, np.ndarray]]:
         """Generate random mel spectrogram from audio input and convert to audio.
@@ -95,14 +93,12 @@ class AudioDiffusion:
             mask_end_secs (float): number of seconds of audio to mask (not generate) at end
             step_generator (torch.Generator): random number generator used to de-noise or None
             eta (float): parameter between 0 and 1 used with DDIM scheduler
-            encoding (`torch.Tensor`): for UNet2DConditionModel shape (batch_size, seq_length, cross_attention_dim)
             noise (torch.Tensor): noisy image or None
 
         Returns:
             PIL Image: mel spectrogram
             (float, np.ndarray): sample rate and raw audio
         """
-
         images, (sample_rate, audios) = self.pipe(
             batch_size=1,
             audio_file=audio_file,
@@ -116,7 +112,6 @@ class AudioDiffusion:
             step_generator=step_generator,
             eta=eta,
             noise=noise,
-            encoding=encoding,
             return_dict=False,
         )
         return images[0], (sample_rate, audios[0])
