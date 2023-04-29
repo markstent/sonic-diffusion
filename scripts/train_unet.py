@@ -365,7 +365,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", type=str, default="data")
     parser.add_argument("--use_auth_token", type=bool, default=False)
     parser.add_argument("--num_images_in_table", type=int, default=6)
-    parser.add_argument("--from_pretrained", type=str, default="markstent/sonic-diffusion/u37hm6p8-sonic-diffusion:v1")
+    parser.add_argument("--from_pretrained", type=str, default=None)
     parser.add_argument("--restore_model", type=str, default=True, help="Should model continue training where it ended last run")
     parser.add_argument("--dataset_config_name", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default="data/model")
