@@ -75,14 +75,13 @@ def main(args):
         )
         dsd = DatasetDict({"train": ds})
         dsd.save_to_disk(os.path.join(args.output_dir))
-        if args.push_to_hub:
-            dsd.push_to_hub(args.push_to_hub)
+
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create dataset of Mel spectrograms from directory of audio files.")
-    parser.add_argument("--input_dir", type=str)
-    parser.add_argument("--output_dir", type=str, default="data")
+    parser.add_argument("--input_dir", type=str, default="/Users/mark.stent/Library/CloudStorage/GoogleDrive-mark.stent@decoded.com/My\ Drive/data_1/mp3/test")
+    parser.add_argument("--output_dir", type=str, default="/Users/mark.stent/Library/CloudStorage/GoogleDrive-mark.stent@decoded.com/My\ Drive/data_1")
     parser.add_argument(
         "--resolution",
         type=str,

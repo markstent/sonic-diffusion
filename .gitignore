@@ -1,0 +1,4 @@
+/data/*
+/wandb/*
+/artifacts/*
+/scripts/train_unet_original.py

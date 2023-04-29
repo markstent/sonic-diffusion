@@ -1,7 +1,9 @@
-# # Package based on https://github.com/teticio/audio-diffusion
+# Package based on https://github.com/teticio/audio-diffusion
 
 from math import acos, sin
 from typing import List, Tuple, Union
+
+from .mel import Mel
 
 import numpy as np
 import torch
@@ -16,8 +18,10 @@ from diffusers import (
 )
 from diffusers.utils import BaseOutput
 from PIL import Image
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from .mel import Mel
 
 class AudioDiffusionPipeline(DiffusionPipeline):
     """
@@ -35,7 +39,7 @@ class AudioDiffusionPipeline(DiffusionPipeline):
 
     def __init__(
         self,
-        vqvae: AutoencoderKL,
+        vqvae: None,
         unet: UNet2DConditionModel,
         mel: Mel,
         scheduler: Union[DDIMScheduler, DDPMScheduler],
