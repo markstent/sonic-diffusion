@@ -124,7 +124,6 @@ def main(args):
                     columns=['Epoch', 'Step', 'Generated-Audio'])
     
 #________________ SELECT MODEL __________________________________
-
     if args.from_pretrained is not None:
         # Specify the name of the artifact (model)
         artifact_name = args.from_pretrained  # replace with your artifact name
@@ -361,7 +360,6 @@ if __name__ == "__main__":
     parser.add_argument("--local_rank", type=int, default=-1)
     parser.add_argument("--run_name", type=str, default="default-run")
     parser.add_argument("--project_name", type=str, default="sonic-diffusion")
-    parser.add_argument("--wandb_api_key", type=str, default=None, help="Your Weights & Biases API key.")
     parser.add_argument("--dataset_name", type=str, default="data")
     parser.add_argument("--use_auth_token", type=bool, default=False)
     parser.add_argument("--num_images_in_table", type=int, default=6)
