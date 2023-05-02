@@ -120,7 +120,7 @@ def main(args):
                     "learning_rate": args.learning_rate,
                     "gradient_accumulation_steps": args.gradient_accumulation_steps,
                     "lr_scheduler": args.lr_scheduler,
-                    "warmup_steps": args.warmup_steps,
+                    "warm_up_steps": args.warmup_steps,
                     "adam_beta1":args.adam_beta1,
                     "adam_beta2":args.adam_beta2,
                     "adam_weight_decay": args.adam_weight_decay,
