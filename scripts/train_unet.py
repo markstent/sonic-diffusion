@@ -116,6 +116,19 @@ def main(args):
         #Initialise WANDB
         accelerator.init_trackers(
             project_name=args.project_name,
+            config={"num_epochs": args.num_epochs, 
+                    "learning_rate": args.learning_rate,
+                    "gradient_accumulation_steps": args.gradient_accumulation_steps,
+                    "lr_scheduler": args.lr_scheduler,
+                    "warmup_steps": args.warmup_steps,
+                    "adam_beta1":args.adam_beta1,
+                    "adam_beta2":args.adam_beta2,
+                    "adam_weight_decay": args.adam_weight_decay,
+                    "ema_max_decay": args.ema_max_decay,
+                    "ema_power": args.ema_power,
+                    "ema_inv_gamma": args.ema_inv_gamma
+                    }
+            init_kwargs={"wandb": {"resume": True}}
         )
         wandb_table_image = wandb.Table(
                     columns=['Epoch', 'Step', 'Clean-Images', 'Generated-Mel-Images'])
@@ -364,6 +377,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_auth_token", type=bool, default=False)
     parser.add_argument("--num_images_in_table", type=int, default=6)
     parser.add_argument("--from_pretrained", type=str, default=None)
+    parser.add_argument("--restore", type=str, default=None)
     parser.add_argument("--restore_model", type=str, default=True, help="Should model continue training where it ended last run")
     parser.add_argument("--dataset_config_name", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default="data/model")

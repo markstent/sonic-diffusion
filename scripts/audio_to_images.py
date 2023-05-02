@@ -89,7 +89,6 @@ if __name__ == "__main__":
         help="Either square resolution or width,height.",
     )
     parser.add_argument("--hop_length", type=int, default=512)
-    parser.add_argument("--push_to_hub", type=str, default=None)
     parser.add_argument("--sample_rate", type=int, default=22050)
     parser.add_argument("--n_fft", type=int, default=2048)
     args = parser.parse_args()
