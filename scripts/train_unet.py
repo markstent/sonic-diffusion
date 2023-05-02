@@ -126,8 +126,8 @@ def main(args):
                     "adam_weight_decay": args.adam_weight_decay,
                     "ema_max_decay": args.ema_max_decay,
                     "ema_power": args.ema_power,
-                    "ema_inv_gamma": args.ema_inv_gamma
-                    }
+                    "ema_inv_gamma": args.ema_inv_gamma,
+                    },
             init_kwargs={"wandb": {"resume": True}}
         )
         wandb_table_image = wandb.Table(
@@ -277,7 +277,7 @@ def main(args):
             logs = {
                 "loss": loss.detach().item(),
                 "lr": lr_scheduler.get_last_lr()[0],
-                "step": global_step,
+                #"step": global_step,
             }
             if args.use_ema:
                 logs["ema_decay"] = ema_model.decay

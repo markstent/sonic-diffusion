@@ -1,5 +1,7 @@
 ![Sonic Diffusion header image](./sonicdiffusion_logo.png)
 
+## Currently in development
+
 Sonic Diffusion is an AI music generation application that uses Melspectrograms with diffusion modeling to create unique and original compositions. The application is written in Python and is built on top of the PyTorch and NumPy libraries.
 
 ## Installation
