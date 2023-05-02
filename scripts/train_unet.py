@@ -139,7 +139,7 @@ def main(args):
 #________________ SELECT MODEL __________________________________
     if args.from_pretrained is not None:
         # Specify the name of the artifact (model)
-        artifact_name = args.from_pretrained  # replace with your artifact name
+        artifact_name = args.from_pretrained  
         artifact = wandb.use_artifact(artifact_name)
 
         # Download the model file(s) and return the path to the downloaded artifact
