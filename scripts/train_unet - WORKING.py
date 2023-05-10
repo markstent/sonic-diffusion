@@ -120,7 +120,7 @@ def main(args):
                     "learning_rate": args.learning_rate,
                     "gradient_accumulation_steps": args.gradient_accumulation_steps,
                     "lr_scheduler": args.lr_scheduler,
-                    "lr_warmup_steps": args.lr_warmup_steps,
+                    "warm_up_steps": args.warmup_steps,
                     "adam_beta1":args.adam_beta1,
                     "adam_beta2":args.adam_beta2,
                     "adam_weight_decay": args.adam_weight_decay,
@@ -128,109 +128,99 @@ def main(args):
                     "ema_power": args.ema_power,
                     "ema_inv_gamma": args.ema_inv_gamma,
                     },
-            init_kwargs = {
-                    "wandb": {
-                        "resume": args.resume_run,
-                        **({"id": args.run_id} if args.resume_run else {}), #merge dictionaries
-                    }
-}
+            init_kwargs={"wandb": {"resume": True}}
         )
+        wandb_table_image = wandb.Table(
+                    columns=['Epoch', 'Step', 'Clean-Images', 'Generated-Mel-Images'])
         
-        wandb_table_media = wandb.Table(
-                        columns=['Epoch', 'Step', 'Clean-Images', 'Generated-Mel-Images', 'Generated-Audio'])
-            
+        wandb_table_audio = wandb.Table(
+                    columns=['Epoch', 'Step', 'Generated-Audio'])
     
 #________________ SELECT MODEL __________________________________
+    if args.from_pretrained is not None:
+        # Specify the name of the artifact (model)
+        artifact_name = args.from_pretrained  
+        artifact = wandb.use_artifact(artifact_name)
 
-    if wandb.run.resumed is True:
-        #load lastest model artifact
-        checkpoint_reference = args.model_resume_name
-        artifact = wandb.run.use_artifact(checkpoint_reference, type="model")
+        # Download the model file(s) and return the path to the downloaded artifact
         artifact_dir = artifact.download()
+
         pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
         mel = pipeline.mel
         model = pipeline.unet
-    else:  #
-        if args.from_pretrained is not None:
-            artifact_name = args.from_pretrained  
-            artifact = wandb.use_artifact(artifact_name)
-            artifact_dir = artifact.download()
-            pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
-            mel = pipeline.mel
-            model = pipeline.unet
-        else:
-            model = UNet2DModel(
-                sample_size=resolution,
-                in_channels=1,
-                out_channels=1,
-                layers_per_block=2,
-                block_out_channels=(128, 128, 256, 256, 512, 512),
-                down_block_types=(
-                    "DownBlock2D",
-                    "DownBlock2D",
-                    "DownBlock2D",
-                    "DownBlock2D",
-                    "AttnDownBlock2D",
-                    "DownBlock2D",
-                ),
-                up_block_types=(
-                    "UpBlock2D",
-                    "AttnUpBlock2D",
-                    "UpBlock2D",
-                    "UpBlock2D",
-                    "UpBlock2D",
-                    "UpBlock2D",
-                ),
-            )
-    #________________ END SELECT MODEL __________________________________
 
-        if args.scheduler == "ddpm":
-            noise_scheduler = DDPMScheduler(
-                num_train_timesteps=args.num_train_steps)
-        else:
-            noise_scheduler = DDIMScheduler(
-                num_train_timesteps=args.num_train_steps)
-
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=args.learning_rate,
-            betas=(args.adam_beta1, args.adam_beta2),
-            weight_decay=args.adam_weight_decay,
-            eps=args.adam_epsilon,
+    else:
+        model = UNet2DModel(
+            sample_size=resolution,
+            in_channels=1,
+            out_channels=1,
+            layers_per_block=2,
+            block_out_channels=(128, 128, 256, 256, 512, 512),
+            down_block_types=(
+                "DownBlock2D",
+                "DownBlock2D",
+                "DownBlock2D",
+                "DownBlock2D",
+                "AttnDownBlock2D",
+                "DownBlock2D",
+            ),
+            up_block_types=(
+                "UpBlock2D",
+                "AttnUpBlock2D",
+                "UpBlock2D",
+                "UpBlock2D",
+                "UpBlock2D",
+                "UpBlock2D",
+            ),
         )
+#________________ END SELECT MODEL __________________________________
 
-        lr_scheduler = get_scheduler(
-            args.lr_scheduler,
-            optimizer=optimizer,
-            num_warmup_steps=args.lr_warmup_steps,
-            num_training_steps=(len(train_dataloader) * args.num_epochs) //
-            args.gradient_accumulation_steps,
-        )
+    if args.scheduler == "ddpm":
+        noise_scheduler = DDPMScheduler(
+            num_train_timesteps=args.num_train_steps)
+    else:
+        noise_scheduler = DDIMScheduler(
+            num_train_timesteps=args.num_train_steps)
 
-        model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            model, optimizer, train_dataloader, lr_scheduler)
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=args.learning_rate,
+        betas=(args.adam_beta1, args.adam_beta2),
+        weight_decay=args.adam_weight_decay,
+        eps=args.adam_epsilon,
+    )
 
-        ema_model = EMAModel(
-            getattr(model, "module", model),
-            inv_gamma=args.ema_inv_gamma,
-            power=args.ema_power,
-            max_value=args.ema_max_decay,
-        )
+    lr_scheduler = get_scheduler(
+        args.lr_scheduler,
+        optimizer=optimizer,
+        num_warmup_steps=args.lr_warmup_steps,
+        num_training_steps=(len(train_dataloader) * args.num_epochs) //
+        args.gradient_accumulation_steps,
+    )
+
+    model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        model, optimizer, train_dataloader, lr_scheduler)
+
+    ema_model = EMAModel(
+        getattr(model, "module", model),
+        inv_gamma=args.ema_inv_gamma,
+        power=args.ema_power,
+        max_value=args.ema_max_decay,
+    )
 
 
-        mel = Mel(
-            x_res=resolution[1],
-            y_res=resolution[0],
-            hop_length=args.hop_length,
-            sample_rate=args.sample_rate,
-            n_fft=args.n_fft,
-        )
+    mel = Mel(
+        x_res=resolution[1],
+        y_res=resolution[0],
+        hop_length=args.hop_length,
+        sample_rate=args.sample_rate,
+        n_fft=args.n_fft,
+    )
 
     global_step = 0
     
 #________________ START TRAINING LOOP __________________________________
     
-
     for epoch in range(args.num_epochs):
         progress_bar = tqdm(total=len(train_dataloader),
                             disable=not accelerator.is_local_main_process)
@@ -330,37 +320,32 @@ def main(args):
                         (len(image.getbands()), image.height, image.width))
                     for image in images
                 ])
-#________________ LOG AND SAVE MODEL START __________________________________
-            
-            # Log media table  
-                img_shape = np.reshape(images[0], (1, 256, 256))
-                wandb_table_media.add_data(
-                    epoch, 
-                    global_step, wandb.Image(clean_images[0]),
-                    wandb.Image(img_shape),
-                    wandb.Audio(normalize(audios[0]), sample_rate=sample_rate))
-                wandb.log({'wandb_table_media': wandb_table_media})
+                # Log images for epoch
                 
-            # Log media artifact
-            
-                media_artifact = wandb.Artifact(
-                    f'media-table-{args.project_name}',
-                    type='table',
-                    description='media-table'
-                    )
-                media_artifact.add(wandb_table_media, "media-table-sonic-diffusion")
-                wandb.log_artifact(media_artifact,
-                                   aliases=[f'step_{global_step}', f'epoch_{epoch}'])
+                for img in images:
+                    img_shape = np.reshape(img, (1, 256, 256))
+                    wandb_table_image.add_data(
+                        epoch, 
+                        global_step, wandb.Image(clean_images[0]),
+                        wandb.Image(img_shape))
+                
+                #log audio files
+                
+                wandb_table_audio.add_data(
+                epoch,
+                global_step,
+                wandb.Audio(normalize(audios[0]), sample_rate=sample_rate)
+                )
                     
             # Save the model
             
             if (epoch + 1) % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 #save model to local directory
                 pipeline.save_pretrained(output_dir)
-                
+               
                 # log wandb artifact
                 model_artifact = wandb.Artifact(
-                    f'{args.project_name}',
+                    f'{wandb.run.id}-{args.project_name}',
                     type='model',
                     description='sonic-diffusion-model-256'
                     )
@@ -370,7 +355,9 @@ def main(args):
                     model_artifact,
                     aliases=[f'step_{global_step}', f'epoch_{epoch}']
                 )
-#________________ LOG AND SAVE MODEL END __________________________________
+                if epoch == args.num_epochs - 1:
+                    wandb.log({'Generated-Mel-Images-Table': wandb_table_image})
+                    wandb.log({'Generated-Audio_Table': wandb_table_audio})
             
         accelerator.wait_for_everyone()
 
@@ -382,29 +369,25 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Sonic Diffusion training script.")
+        description="Simple example of a training script.")
     parser.add_argument("--local_rank", type=int, default=-1)
     parser.add_argument("--run_name", type=str, default="default-run")
     parser.add_argument("--project_name", type=str, default="sonic-diffusion")
     parser.add_argument("--dataset_name", type=str, default="data")
     parser.add_argument("--use_auth_token", type=bool, default=False)
-    #parser.add_argument("--num_images_in_table", type=int, default=6)
+    parser.add_argument("--num_images_in_table", type=int, default=6)
     parser.add_argument("--from_pretrained", type=str, default=None)
-    
-    parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
-    parser.add_argument("--resume_run", type=bool, default=True)
-    parser.add_argument("--run_id", type=str, default="true-glade-4", help="Continue training on WandB Run ID")
-    
+    parser.add_argument("--restore", type=str, default=None)
+    parser.add_argument("--restore_model", type=str, default=True, help="Should model continue training where it ended last run")
     parser.add_argument("--dataset_config_name", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default="data/model")
     parser.add_argument("--overwrite_output_dir", type=bool, default=False)
     parser.add_argument("--cache_dir", type=str, default=None)
     parser.add_argument("--train_batch_size", type=int, default=2)
     parser.add_argument("--eval_batch_size", type=int, default=2)
-    parser.add_argument("--num_epochs", type=int, default=50)
-
+    parser.add_argument("--num_epochs", type=int, default=2)
     
-    parser.add_argument("--save_images_epochs", type=int, default=1, help ="How many epochs to save images after")
+    parser.add_argument("--save_images_epochs", type=int, default=1, help ="Number of sample images to display")
     parser.add_argument("--save_model_epochs", type=int, default=1)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
     parser.add_argument("--learning_rate", type=float, default=1e-4)

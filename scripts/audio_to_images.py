@@ -15,6 +15,7 @@ logger = logging.getLogger("audio_to_images")
 
 
 def main(args):
+    
     mel = Mel(
         x_res=args.resolution[0],
         y_res=args.resolution[1],
@@ -75,13 +76,12 @@ def main(args):
         )
         dsd = DatasetDict({"train": ds})
         dsd.save_to_disk(os.path.join(args.output_dir))
-
-
+        print(f"Completed...{len(ds)} spectrograms created")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create dataset of Mel spectrograms from directory of audio files.")
-    parser.add_argument("--input_dir", type=str, default="/Users/mark.stent/Library/CloudStorage/GoogleDrive-mark.stent@decoded.com/My\ Drive/data_1/mp3/test")
-    parser.add_argument("--output_dir", type=str, default="/Users/mark.stent/Library/CloudStorage/GoogleDrive-mark.stent@decoded.com/My\ Drive/data_1")
+    parser.add_argument("--input_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/mp3")
+    parser.add_argument("--output_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data")
     parser.add_argument(
         "--resolution",
         type=str,
@@ -107,5 +107,6 @@ if __name__ == "__main__":
         except ValueError:
             raise ValueError("Resolution must be a tuple of two integers or a single integer.")
     assert isinstance(args.resolution, tuple)
-
+    
+    
     main(args)
