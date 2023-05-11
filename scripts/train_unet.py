@@ -159,7 +159,7 @@ def main(args):
             pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
             mel = pipeline.mel
             model = pipeline.unet
-        except wandb.errors.CommError as e:
+        except:
             
             model = UNet2DModel(
                 sample_size=resolution,
@@ -400,7 +400,7 @@ def main(args):
             
             if (epoch + 1) % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 #save model to local directory
-                #pipeline.save_pretrained(output_dir)
+                pipeline.save_pretrained(output_dir)
                 
                 # log wandb artifact
                 model_artifact = wandb.Artifact(
