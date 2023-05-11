@@ -49,6 +49,9 @@ def main(args):
     output_dir = os.environ.get("SM_MODEL_DIR", None) or args.output_dir
     logging_dir = os.path.join(output_dir, args.logging_dir)
     
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
     # Initialize accelerator
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -153,6 +156,9 @@ def main(args):
             artifact = wandb.run.use_artifact(checkpoint_reference, type="model")
             start_epoch = int(list(filter(lambda alias: alias.startswith('epoch'), artifact.aliases))[0].split('_')[1]) #get the last epoch
             artifact_dir = artifact.download()
+            pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
+            mel = pipeline.mel
+            model = pipeline.unet
         except wandb.errors.CommError as e:
             
             model = UNet2DModel(
@@ -178,9 +184,6 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
-        pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
-        mel = pipeline.mel
-        model = pipeline.unet
     else:  #
         if args.from_pretrained is not None:
             artifact_name = args.from_pretrained  
