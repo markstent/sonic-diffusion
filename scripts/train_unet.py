@@ -142,6 +142,7 @@ def main(args):
                     }
                     }
             )
+    start_epoch = 0
  
 #________________ SELECT MODEL __________________________________
 
@@ -150,14 +151,33 @@ def main(args):
         checkpoint_reference = args.model_resume_name
         try:
             artifact = wandb.run.use_artifact(checkpoint_reference, type="model")
-            start_epoch = int(filter(lambda alias: alias.startswith('epoch'), artifact.aliases)[0].split('_')[1]) #get the last epoch
+            start_epoch = int(list(filter(lambda alias: alias.startswith('epoch'), artifact.aliases))[0].split('_')[1]) #get the last epoch
             artifact_dir = artifact.download()
         except wandb.errors.CommError as e:
-            print(f"Unable to download artifact: {e}")
-            sys.exit(1)
-        if not os.path.exists(artifact_dir):
-            print("Artifact directory does not exist.")
-            sys.exit(1)
+            
+            model = UNet2DModel(
+                sample_size=resolution,
+                in_channels=1,
+                out_channels=1,
+                layers_per_block=2,
+                block_out_channels=(128, 128, 256, 256, 512, 512),
+                down_block_types=(
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "DownBlock2D",
+                    "AttnDownBlock2D",
+                    "DownBlock2D",
+                ),
+                up_block_types=(
+                    "UpBlock2D",
+                    "AttnUpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                    "UpBlock2D",
+                ),
+            )
         pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
         mel = pipeline.mel
         model = pipeline.unet
@@ -414,7 +434,7 @@ if __name__ == "__main__":
     # Model loading arguments
     parser.add_argument("--from_pretrained", type=str, default=None)
     parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
-    parser.add_argument("--resume_run", type=str, default="Allow")
+    parser.add_argument("--resume_run", type=str, default="allow")
     parser.add_argument("--run_id", type=str, default="test-run-001", help="Continue training on WandB Run ID")
     
     # Dataset and output arguments
