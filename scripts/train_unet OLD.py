@@ -1,6 +1,7 @@
-# Import required libraries
+
 import argparse
 import os
+import pickle
 import random
 from pathlib import Path
 from typing import Optional
@@ -20,19 +21,20 @@ from librosa.util import normalize
 from torchvision.transforms import Compose, Normalize, ToTensor
 from tqdm.auto import tqdm
 from PIL import Image
+
 import os
 import sys
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+
 from sonicdiffusion.pipeline_sonic_diffusion import AudioDiffusionPipeline
-#start logger instance with current module name
-logger = get_logger(__name__) 
+
+logger = get_logger(__name__) #start logger instance with current module name
 
 # START MAIN FUNCTION
 
 def main(args):
-    # Function documentation
+    
     """Runs the main training loop.
 
     Args:
@@ -45,11 +47,10 @@ def main(args):
         NotImplementedError: If the accelerator type is not supported.
     """
     
-    # Set output and logging directories
+    
     output_dir = os.environ.get("SM_MODEL_DIR", None) or args.output_dir
     logging_dir = os.path.join(output_dir, args.logging_dir)
     
-    # Initialize accelerator
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision=args.mixed_precision,
@@ -58,10 +59,8 @@ def main(args):
     )
  
     def load_dataset_or_disk(args):
-        # Function documentation
         """
         Load a dataset from disk or remote repository based on the provided arguments.
-
         Args:
             args (Namespace): A namespace object containing the following attributes:
                 dataset_name (str): Name of the dataset to be loaded.
@@ -73,8 +72,7 @@ def main(args):
         Returns:
             dataset (Dataset): The loaded dataset object.
         """
-        
-        # Load dataset from disk or remote repository
+
         if args.dataset_name is not None:
             if os.path.exists(args.dataset_name):
                 return load_from_disk(args.dataset_name, storage_options=args.dataset_config_name)["train"]
@@ -93,32 +91,27 @@ def main(args):
             cache_dir=args.cache_dir,
             split="train",
         )
-            
-    # Load dataset
+
     dataset = load_dataset_or_disk(args)
   
     # Determine image resolution
     resolution = dataset[0]["image"].height, dataset[0]["image"].width
 
-    # Define augmentations
     augmentations = Compose([
         ToTensor(),
         Normalize([0.5], [0.5]),
     ])
 
-    # Function to apply transforms
     def transforms(examples):
         images = [augmentations(image) for image in examples["image"]]
         return {"input": images}
 
-    # Set dataset transforms
     dataset.set_transform(transforms)
-    
-    # Create dataloader
     train_dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.train_batch_size, shuffle=True)
     
     # Initialise logging 
+    
     if accelerator.is_main_process:
         #Initialise WANDB
         accelerator.init_trackers(
@@ -140,9 +133,13 @@ def main(args):
                         "resume": args.resume_run,
                         **({"id": args.run_id} if args.resume_run else {}), #merge dictionaries
                     }
-                    }
-            )
- 
+}
+        )
+        
+        wandb_table_media = wandb.Table(
+                        columns=['Epoch', 'Step', 'Clean-Images', 'Generated-Mel-Images', 'Generated-Audio'])
+            
+    
 #________________ SELECT MODEL __________________________________
 
     if wandb.run.resumed is True:
@@ -192,9 +189,8 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
-#________________ INITIALIZE __________________________________
+    #________________ END SELECT MODEL __________________________________
 
-    # Initialize noise scheduler
     if args.scheduler == "ddpm":
         noise_scheduler = DDPMScheduler(
             num_train_timesteps=args.num_train_steps)
@@ -202,7 +198,6 @@ def main(args):
         noise_scheduler = DDIMScheduler(
             num_train_timesteps=args.num_train_steps)
 
-    # Initialize optimizer
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=args.learning_rate,
@@ -211,7 +206,6 @@ def main(args):
         eps=args.adam_epsilon,
     )
 
-    # Initialize learning rate scheduler
     lr_scheduler = get_scheduler(
         args.lr_scheduler,
         optimizer=optimizer,
@@ -219,20 +213,18 @@ def main(args):
         num_training_steps=(len(train_dataloader) * args.num_epochs) //
         args.gradient_accumulation_steps,
     )
-    
-    # Prepare model, optimizer, dataloader, and lr_scheduler for training
+
     model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         model, optimizer, train_dataloader, lr_scheduler)
-    
-    # Initialize EMA model
+
     ema_model = EMAModel(
         getattr(model, "module", model),
         inv_gamma=args.ema_inv_gamma,
         power=args.ema_power,
         max_value=args.ema_max_decay,
     )
-    
-    # Initialize Mel object
+
+
     mel = Mel(
         x_res=resolution[1],
         y_res=resolution[0],
@@ -243,11 +235,10 @@ def main(args):
 
     global_step = 0
     
-#________________ TRAINING LOOP __________________________________
+#________________ START TRAINING LOOP __________________________________
+    
 
     for epoch in range(args.num_epochs):
-        # Training loop code
-        
         progress_bar = tqdm(total=len(train_dataloader),
                             disable=not accelerator.is_local_main_process)
         progress_bar.set_description(f"Epoch {epoch+1}")
@@ -346,13 +337,9 @@ def main(args):
                         (len(image.getbands()), image.height, image.width))
                     for image in images
                 ])
-#________________ LOG START __________________________________
+#________________ LOG AND SAVE MODEL START __________________________________
             
-            # Log media table 
-             
-                wandb_table_media = wandb.Table(
-                        columns=['Epoch', 'Step', 'Clean-Images', 
-                                 'Generated-Mel-Images', 'Generated-Audio'])
+            # Log media table  
                 img_shape = np.reshape(images[0], (1, 256, 256))
                 wandb_table_media.add_data(
                     epoch, 
@@ -376,7 +363,7 @@ def main(args):
             
             if (epoch + 1) % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 #save model to local directory
-                #pipeline.save_pretrained(output_dir)
+                pipeline.save_pretrained(output_dir)
                 
                 # log wandb artifact
                 model_artifact = wandb.Artifact(
@@ -390,6 +377,7 @@ def main(args):
                     model_artifact,
                     aliases=[f'step_{global_step}', f'epoch_{epoch}']
                 )
+#________________ LOG AND SAVE MODEL END __________________________________
             
         accelerator.wait_for_everyone()
 
@@ -399,38 +387,32 @@ def main(args):
 
 # END MAIN FUNCTION
 
-# Begin script execution
 if __name__ == "__main__":
-    # Set up argument parser
-    parser = argparse.ArgumentParser(description="Sonic Diffusion training script.")
-    
-    # General arguments
+    parser = argparse.ArgumentParser(
+        description="Sonic Diffusion training script.")
     parser.add_argument("--local_rank", type=int, default=-1)
     parser.add_argument("--run_name", type=str, default="default-run")
     parser.add_argument("--project_name", type=str, default="sonic-diffusion")
-    parser.add_argument("--use_auth_token", type=bool, default=True)
-    
-    # Model loading arguments
+    parser.add_argument("--dataset_name", type=str, default="data/test")
+    parser.add_argument("--use_auth_token", type=bool, default=False)
+    #parser.add_argument("--num_images_in_table", type=int, default=6)
     parser.add_argument("--from_pretrained", type=str, default=None)
-    parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
-    parser.add_argument("--resume_run", type=str, default="Allow")
-    parser.add_argument("--run_id", type=str, default="test-run-001", help="Continue training on WandB Run ID")
     
-    # Dataset and output arguments
+    parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
+    parser.add_argument("--resume_run", type=bool, default=False)
+    parser.add_argument("--run_id", type=str, default="whole-wave-3", help="Continue training on WandB Run ID")
+    
     parser.add_argument("--dataset_config_name", type=str, default=None)
-    parser.add_argument("--dataset_name", type=str, default="data/test/data")
-    parser.add_argument("--output_dir", type=str, default="data/test/data/model")
+    parser.add_argument("--output_dir", type=str, default="data/test/model")
     parser.add_argument("--overwrite_output_dir", type=bool, default=False)
     parser.add_argument("--cache_dir", type=str, default=None)
-    
-    # Training and evaluation arguments
     parser.add_argument("--train_batch_size", type=int, default=2)
     parser.add_argument("--eval_batch_size", type=int, default=2)
     parser.add_argument("--num_epochs", type=int, default=50)
-    parser.add_argument("--save_images_epochs", type=int, default=1, help="How many epochs to save images after")
-    parser.add_argument("--save_model_epochs", type=int, default=1, help="Keep as 1 if resuming training")
+
     
-    # Optimization arguments
+    parser.add_argument("--save_images_epochs", type=int, default=1, help ="How many epochs to save images after")
+    parser.add_argument("--save_model_epochs", type=int, default=1)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
     parser.add_argument("--lr_scheduler", type=str, default="cosine")
@@ -439,46 +421,38 @@ if __name__ == "__main__":
     parser.add_argument("--adam_beta2", type=float, default=0.999)
     parser.add_argument("--adam_weight_decay", type=float, default=1e-6)
     parser.add_argument("--adam_epsilon", type=float, default=1e-08)
-    
-    # EMA arguments
     parser.add_argument("--use_ema", type=bool, default=True)
     parser.add_argument("--ema_inv_gamma", type=float, default=1.0)
     parser.add_argument("--ema_power", type=float, default=3 / 4)
     parser.add_argument("--ema_max_decay", type=float, default=0.9999)
-    
-    # Logging arguments
     parser.add_argument("--logging_dir", type=str, default="logs")
-    
-    # Mixed precision arguments
-    parser.add_argument("--mixed_precision", type=str, default="no", choices=["no", "fp16", "bf16"],
-                        help=("Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). "
-                              "Bf16 requires PyTorch >= 1.10 and an Nvidia Ampere GPU."))
-    
-    # Audio preprocessing arguments
+    parser.add_argument(
+        "--mixed_precision",
+        type=str,
+        default="no",
+        choices=["no", "fp16", "bf16"],
+        help=(
+            "Whether to use mixed precision. Choose"
+            "between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >= 1.10."
+            "and an Nvidia Ampere GPU."),
+    )
     parser.add_argument("--hop_length", type=int, default=512)
     parser.add_argument("--sample_rate", type=int, default=22050)
     parser.add_argument("--n_fft", type=int, default=2048)
-    
-    # Training control arguments
     parser.add_argument("--start_epoch", type=int, default=0)
     parser.add_argument("--num_train_steps", type=int, default=1000)
-
-    # Scheduler argument
-    parser.add_argument("--scheduler", type=str, default="ddim", help="ddpm or ddim")
-
-    # Parse arguments
+    parser.add_argument("--scheduler",
+                        type=str,
+                        default="ddim",
+                        help="ddpm or ddim")
     args = parser.parse_args()
-
-    # Update local rank from environment variable if needed
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
 
-    # Check for dataset name or training data directory
     if args.dataset_name is None and args.train_data_dir is None:
-        raise ValueError("You must specify a train data directory.")
+        raise ValueError(
+            "You must specify a train data directory."
+        )
 
-    # Call main function with parsed arguments
     main(args)
-
-

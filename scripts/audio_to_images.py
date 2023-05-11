@@ -80,8 +80,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create dataset of Mel spectrograms from directory of audio files.")
-    parser.add_argument("--input_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/mp3")
-    parser.add_argument("--output_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data")
+    parser.add_argument("--input_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/test")
+    parser.add_argument("--output_dir", type=str, default="/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/test/data")
     parser.add_argument(
         "--resolution",
         type=str,
