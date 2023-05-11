@@ -150,6 +150,7 @@ def main(args):
         checkpoint_reference = args.model_resume_name
         try:
             artifact = wandb.run.use_artifact(checkpoint_reference, type="model")
+            start_epoch = int(filter(lambda alias: alias.startswith('epoch'), artifact.aliases)[0].split('_')[1]) #get the last epoch
             artifact_dir = artifact.download()
         except wandb.errors.CommError as e:
             print(f"Unable to download artifact: {e}")
@@ -245,7 +246,7 @@ def main(args):
     
 #________________ TRAINING LOOP __________________________________
 
-    for epoch in range(args.num_epochs):
+    for epoch in range(start_epoch, args.num_epochs):
         # Training loop code
         
         progress_bar = tqdm(total=len(train_dataloader),
