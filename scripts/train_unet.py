@@ -146,6 +146,7 @@ def main(args):
                     }
             )
     start_epoch = 0
+    global_step = 0
  
 #________________ SELECT MODEL __________________________________
 
@@ -154,13 +155,14 @@ def main(args):
         checkpoint_reference = args.model_resume_name
         try:
             artifact = wandb.run.use_artifact(checkpoint_reference, type="model")
-            start_epoch = int(list(filter(lambda alias: alias.startswith('epoch'), artifact.aliases))[0].split('_')[1]) #get the last epoch
+            start_epoch = int(list(filter(lambda alias: alias.startswith('epoch'), artifact.aliases))[0].split('_')[1])
+            global_step = int(list(filter(lambda alias: alias.startswith('step'), artifact.aliases))[0].split('_')[1]) 
             artifact_dir = artifact.download()
             pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
             mel = pipeline.mel
             model = pipeline.unet
-        except:
-            
+            logger.info(f"Checkpoint loaded at epoch {start_epoch} and global step {global_step}", main_process_only=False)
+        except:   
             model = UNet2DModel(
                 sample_size=resolution,
                 in_channels=1,
@@ -244,6 +246,36 @@ def main(args):
         args.gradient_accumulation_steps,
     )
     
+    # Initialize EMA model
+    ema_model = EMAModel(
+        getattr(model, "module", model),
+        inv_gamma=args.ema_inv_gamma,
+        power=args.ema_power,
+        max_value=args.ema_max_decay,
+    )
+    
+    # Initialize Mel object
+    mel = Mel(
+        x_res=resolution[1],
+        y_res=resolution[0],
+        hop_length=args.hop_length,
+        sample_rate=args.sample_rate,
+        n_fft=args.n_fft,
+    )
+    
+    # Load previous scheduler, ema and optimizer settings if resuming run
+    if wandb.run.resumed is True:
+        try:
+            artifact_params = wandb.use_artifact('params:latest')
+            artifact_params.download()
+            chk_point = torch.load(artifact_params)
+            optimizer.load_state_dict(chk_point['optimizer_state']) 
+            lr_scheduler.load_state_dict(torch.load(chk_point['scheduler_state'])) 
+            ema_model.load_state_dict(chk_point['ema_state'])
+            logger.info(f"Parameters loaded for epoch {start_epoch}", main_process_only=False)
+        except:
+            pass
+        
     # Prepare model, optimizer, dataloader, and lr_scheduler for training
     model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         model, optimizer, train_dataloader, lr_scheduler)
@@ -264,8 +296,9 @@ def main(args):
         sample_rate=args.sample_rate,
         n_fft=args.n_fft,
     )
-
-    global_step = 0
+    
+    logger.info(f'Start epoch: {start_epoch}', main_process_only=False)
+    logger.info(f'Start step: {global_step}', main_process_only=False)
     
 #________________ TRAINING LOOP __________________________________
 
@@ -274,7 +307,7 @@ def main(args):
         
         progress_bar = tqdm(total=len(train_dataloader),
                             disable=not accelerator.is_local_main_process)
-        progress_bar.set_description(f"Epoch {epoch+1}")
+        progress_bar.set_description(f"Epoch {epoch}")
 
         if epoch < args.start_epoch:
             for step in range(len(train_dataloader)):
@@ -385,16 +418,10 @@ def main(args):
                     wandb.Audio(normalize(audios[0]), sample_rate=sample_rate))
                 wandb.log({'wandb_table_media': wandb_table_media})
                 
-            # Log media artifact
+            # Log images/audio as files
             
-                media_artifact = wandb.Artifact(
-                    f'media-table-{args.project_name}',
-                    type='table',
-                    description='media-table'
-                    )
-                media_artifact.add(wandb_table_media, "media-table-sonic-diffusion")
-                wandb.log_artifact(media_artifact,
-                                   aliases=[f'step_{global_step}', f'epoch_{epoch}'])
+                wandb.log({'image': wandb.Image(img_shape)})
+                wandb.log({'audio': wandb.Audio(normalize(audios[0]), sample_rate=sample_rate)})
                     
             # Save the model
             
@@ -414,10 +441,31 @@ def main(args):
                     model_artifact,
                     aliases=[f'step_{global_step}', f'epoch_{epoch}']
                 )
+                
+                # Save optimizer, scheduler, ema state
+                
+                param_dict = {
+                    'optimizer_state': optimizer.state_dict(),
+                    'scheduler_state': lr_scheduler.state_dict(),
+                    'ema_state': ema_model.state_dict(),
+                    }
+        
+                param_dir = os.path.join(args.output_dir, 'params')
+                os.makedirs(param_dir, exist_ok=True)
+                param_path = os.path.join(param_dir, 'params.pt')
+                torch.save(param_dict, param_path)
+                param_artifact = wandb.Artifact('params', type='parameters')
+                param_artifact.add_file(param_path)
+                wandb.log_artifact(param_artifact)
+                
+                
             
         accelerator.wait_for_everyone()
 
     accelerator.end_training()
+    
+    os.remove(param_artifact) #remove saved local optimzer file
+
     
 #________________ END TRAINING LOOP __________________________________
 
@@ -438,7 +486,7 @@ if __name__ == "__main__":
     parser.add_argument("--from_pretrained", type=str, default=None)
     parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
     parser.add_argument("--resume_run", type=str, default="allow")
-    parser.add_argument("--run_id", type=str, default="test-run-001", help="Continue training on WandB Run ID")
+    parser.add_argument("--run_id", type=str, default="test-run-002", help="Continue training on WandB Run ID")
     
     # Dataset and output arguments
     parser.add_argument("--dataset_config_name", type=str, default=None)
