@@ -161,7 +161,7 @@ def main(args):
             pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
             mel = pipeline.mel
             model = pipeline.unet
-            logger.info("Model Resumed", main_process_only=False)
+            logger.info("Model Resumed...", main_process_only=False)
         except:   
             model = UNet2DModel(
                 sample_size=resolution,
@@ -186,7 +186,6 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
-            logger.info(f"Model Loaded", main_process_only=False)
     else:  #
         if args.from_pretrained is not None:
             artifact_name = args.from_pretrained  
@@ -219,8 +218,6 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
-            logger.info("Model Loaded", main_process_only=False)
-            
 #________________ INITIALIZE __________________________________
 
     # Initialize noise scheduler
@@ -269,30 +266,21 @@ def main(args):
     # Load previous scheduler, ema and optimizer settings if resuming run
     if wandb.run.resumed is True:
         try:
-            # Get the artifact
             artifact_params = wandb.use_artifact('params:latest')
-
-            # Get a file-like object for 'params.pt' within the artifact
-            buffer = artifact_params.file('params.pt')  
-
-            # Load the parameters directly from the byte stream
-            chk_point = torch.load(buffer)
-
-            # Load the state dicts
+            artifact_params.download()
+            chk_point = torch.load(artifact_params)
+            optimizer.load_state_dict(chk_point['optimizer_state']) 
             start_epoch = chk_point['epoch']
             global_step = chk_point['step']
-            optimizer.load_state_dict(chk_point['optimizer_state']) 
-            lr_scheduler.load_state_dict(chk_point['scheduler_state']) 
-            ema_model.load_state_dict(chk_point['ema_state'])
-
-            # Log
-            logger.info(f"Parameters loaded for epoch {start_epoch}", main_process_only=False)
+            lr_scheduler.load_state_dict(torch.load(chk_point['scheduler_state'])) 
+            logger.info(f"Parameters loaded for epoch {start_epoch}",main_process_only=False)
         except:
             pass
         
     # Prepare model, optimizer, dataloader, and lr_scheduler for training
     model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         model, optimizer, train_dataloader, lr_scheduler)
+
     
     logger.info(f'Start epoch: {start_epoch}', main_process_only=False)
     logger.info(f'Start step: {global_step}', main_process_only=False)
@@ -446,7 +434,6 @@ def main(args):
                     'step': global_step,
                     'optimizer_state': optimizer.state_dict(),
                     'scheduler_state': lr_scheduler.state_dict(),
-                    'ema_state': ema_model.state_dict(),
                     }
         
                 # Serialize the parameter dictionary to a byte stream
@@ -491,7 +478,7 @@ if __name__ == "__main__":
     parser.add_argument("--from_pretrained", type=str, default=None)
     parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
     parser.add_argument("--resume_run", type=str, default="allow")
-    parser.add_argument("--run_id", type=str, default="test-run-004", help="Continue training on WandB Run ID")
+    parser.add_argument("--run_id", type=str, default="test-run-002", help="Continue training on WandB Run ID")
     
     # Dataset and output arguments
     parser.add_argument("--dataset_config_name", type=str, default=None)
@@ -518,7 +505,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam_epsilon", type=float, default=1e-08)
     
     # EMA arguments
-    parser.add_argument("--use_ema", type=bool, default=True)
+    parser.add_argument("--use_ema", type=bool, default=False)
     parser.add_argument("--ema_inv_gamma", type=float, default=1.0)
     parser.add_argument("--ema_power", type=float, default=3 / 4)
     parser.add_argument("--ema_max_decay", type=float, default=0.9999)
