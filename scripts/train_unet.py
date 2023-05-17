@@ -147,6 +147,12 @@ def main(args):
                     }
                     }
             )
+        
+    # Create a console handler and set its log level
+    console_handler = logger.StreamHandler()
+    console_handler.setLevel(logger.INFO)
+    logger.addHandler(console_handler)
+    
     start_epoch = 0
     global_step = 0
  
@@ -162,6 +168,7 @@ def main(args):
             mel = pipeline.mel
             model = pipeline.unet
             logger.info("Model Resumed...", main_process_only=False)
+            
         except:   
             model = UNet2DModel(
                 sample_size=resolution,
@@ -186,7 +193,8 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
-    else:  #
+            logger.info("New model created...", main_process_only=False)
+    else:  
         if args.from_pretrained is not None:
             artifact_name = args.from_pretrained  
             artifact = wandb.use_artifact(artifact_name)
@@ -194,6 +202,7 @@ def main(args):
             pipeline = AudioDiffusionPipeline.from_pretrained(artifact_dir)
             mel = pipeline.mel
             model = pipeline.unet
+            logger.info("Pretrained model loaded...", main_process_only=False)
         else:
             model = UNet2DModel(
                 sample_size=resolution,
@@ -218,6 +227,7 @@ def main(args):
                     "UpBlock2D",
                 ),
             )
+            logger.info("New model created...", main_process_only=False)
 #________________ INITIALIZE __________________________________
 
     # Initialize noise scheduler
