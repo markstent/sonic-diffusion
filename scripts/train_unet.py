@@ -29,7 +29,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sonicdiffusion.pipeline_sonic_diffusion import AudioDiffusionPipeline
 #start logger instance with current module name
-logger = get_logger(__name__) 
+logger = get_logger(__name__, log_level='INFO') 
 
 # START MAIN FUNCTION
 
@@ -151,7 +151,7 @@ def main(args):
     # Create a console handler and set its log level
     console_handler = logger.StreamHandler()
     console_handler.setLevel(logger.INFO)
-    logger.addHandler(console_handler)
+    logger.addHandler(console_handler
     
     start_epoch = 0
     global_step = 0
@@ -263,6 +263,10 @@ def main(args):
         power=args.ema_power,
         max_value=args.ema_max_decay,
     )
+    
+    if accelerator.is_main_process:
+        run = os.path.split(__file__)[-1].split(".")[0]
+        accelerator.init_trackers(run)
     
     # Initialize Mel object
     mel = Mel(
