@@ -2,6 +2,7 @@
 import argparse
 import os
 import io
+import shutil
 import pickle
 import random
 from pathlib import Path
@@ -164,7 +165,8 @@ def main(args):
             mel = pipeline.mel
             model = pipeline.unet
             logger.info("Model Resumed...", main_process_only=False)
-            
+            #delete downloaded artifact and directory
+            shutil.rmtree(artifact_dir)
         except:   
             model = UNet2DModel(
                 sample_size=resolution,
@@ -274,19 +276,23 @@ def main(args):
     )
     
     # Load previous scheduler, ema and optimizer settings if resuming run
+    
     if wandb.run.resumed is True:
         try:
             artifact_params = wandb.use_artifact('params:latest')
-            artifact_params.download()
-            chk_point = torch.load(artifact_params)
+            artifact_dir_path = artifact_params.download()
+            artifact_file_path = os.path.join(artifact_dir_path, 'params.pt')
+            with open(artifact_file_path, 'rb') as f:
+                buffer = io.BytesIO(f.read())
+            chk_point = torch.load(buffer)
             optimizer.load_state_dict(chk_point['optimizer_state']) 
             start_epoch = chk_point['epoch']
             global_step = chk_point['step']
-            lr_scheduler.load_state_dict(torch.load(chk_point['scheduler_state'])) 
+            lr_scheduler.load_state_dict(chk_point['scheduler_state']) 
             logger.info(f"Parameters loaded for epoch {start_epoch}",main_process_only=False)
-        except:
-            pass
-        
+            os.remove(artifact_file_path)
+        except ValueError as e:
+            print(f"No artifact found: {e}")
     # Prepare model, optimizer, dataloader, and lr_scheduler for training
     model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         model, optimizer, train_dataloader, lr_scheduler)
@@ -399,30 +405,19 @@ def main(args):
                     for image in images
                 ])
 #________________ LOG START __________________________________
-            
-            # Log media table 
-             
-                wandb_table_media = wandb.Table(
-                        columns=['Epoch', 'Step', 'Clean-Images', 
-                                 'Generated-Mel-Images', 'Generated-Audio'])
-                img_shape = np.reshape(images[0], (1, 256, 256))
-                wandb_table_media.add_data(
-                    epoch, 
-                    global_step, wandb.Image(clean_images[0]),
-                    wandb.Image(img_shape),
-                    wandb.Audio(normalize(audios[0]), sample_rate=sample_rate))
-                wandb.log({'wandb_table_media': wandb_table_media})
-                
+            if (epoch + 1) % args.save_images_epochs == 0 or epoch == args.num_epochs - 1:
+           
             # Log images/audio as files
-            
-                wandb.log({'image': wandb.Image(img_shape)})
+                img_shape = np.reshape(images[0], (1, 256, 256))
+                wandb.log({'image-clean': wandb.Image(clean_images[0])})
+                wandb.log({'image-generated': wandb.Image(img_shape)})
                 wandb.log({'audio': wandb.Audio(normalize(audios[0]), sample_rate=sample_rate)})
-                    
+
             # Save the model
             
             if (epoch + 1) % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
                 #save model to local directory
-                pipeline.save_pretrained(output_dir)
+                #pipeline.save_pretrained(output_dir)
                 
                 # log wandb artifact
                 model_artifact = wandb.Artifact(
@@ -450,21 +445,15 @@ def main(args):
                 param_dict['optimizer_state'] = {k: v.to('cpu') if isinstance(v, torch.Tensor) else v for k, v in param_dict['optimizer_state'].items()}
 
         
-                # Serialize the parameter dictionary to a byte stream
-                buffer = io.BytesIO()
-                torch.save(param_dict, buffer)
-                buffer.seek(0)
-
-                # Create a wandb Artifact
+                param_dir = os.path.join(args.output_dir, 'params')
+                os.makedirs(param_dir, exist_ok=True)
+                param_path = os.path.join(param_dir, 'params.pt')
+                torch.save(param_dict, param_path)
                 param_artifact = wandb.Artifact('params', type='parameters')
-
-                # Add the byte stream to the artifact
-                param_artifact.add(buffer, 'params.pt')
-
-                # Log the artifact to wandb
+                param_artifact.add_file(param_path)
                 wandb.log_artifact(param_artifact)
                 
-                
+                shutil.rmtree(param_dir)
             
         accelerator.wait_for_everyone()
 
@@ -492,7 +481,7 @@ if __name__ == "__main__":
     parser.add_argument("--from_pretrained", type=str, default=None)
     parser.add_argument("--model_resume_name", type=str, default="markstent/sonic-diffusion/sonic-diffusion:latest")
     parser.add_argument("--resume_run", type=str, default="allow")
-    parser.add_argument("--run_id", type=str, default="test-run-002", help="Continue training on WandB Run ID")
+    parser.add_argument("--run_id", type=str, default="test-run-006", help="Continue training on WandB Run ID")
     
     # Dataset and output arguments
     parser.add_argument("--dataset_config_name", type=str, default=None)
