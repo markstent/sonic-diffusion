@@ -147,11 +147,7 @@ def main(args):
                     }
                     }
             )
-        
-    # Create a console handler and set its log level
-    console_handler = logger.StreamHandler()
-    console_handler.setLevel(logger.INFO)
-    logger.addHandler(console_handler
+
     
     start_epoch = 0
     global_step = 0
@@ -449,6 +445,10 @@ def main(args):
                     'optimizer_state': optimizer.state_dict(),
                     'scheduler_state': lr_scheduler.state_dict(),
                     }
+                
+                # Move optimizer state to CPU device for serialization
+                param_dict['optimizer_state'] = {k: v.to('cpu') if isinstance(v, torch.Tensor) else v for k, v in param_dict['optimizer_state'].items()}
+
         
                 # Serialize the parameter dictionary to a byte stream
                 buffer = io.BytesIO()
