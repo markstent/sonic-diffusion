@@ -508,7 +508,7 @@ if __name__ == "__main__":
     parser.add_argument("--adam_epsilon", type=float, default=1e-08)
     
     # EMA arguments
-    parser.add_argument("--use_ema", type=bool, default=False)
+    parser.add_argument("--use_ema", type=bool, default=True)
     parser.add_argument("--ema_inv_gamma", type=float, default=1.0)
     parser.add_argument("--ema_power", type=float, default=3 / 4)
     parser.add_argument("--ema_max_decay", type=float, default=0.9999)
