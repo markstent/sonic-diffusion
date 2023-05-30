@@ -1,130 +1,144 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Mel Spectrogram Samples</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #000;
-      color: #fff;
-    }
-    
-    .header-image {
-      width: 500px;
-      height: 100px;
-      object-fit: cover;
-    }
-    
-    .sample-container {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    
-    .sample-container img {
-      max-width: 200px;
-      margin-right: 20px;
-    }
-    
-    .sample-description {
-      flex: 1;
-    }
-    
-    audio {
-      margin-top: 10px;
-    }
-    
-    h1, p, a {
-      color: #fff;
-    }
-    
-    .header-description {
-      margin-bottom: 20px;
-    }
-    
-    .author-info {
-      margin-bottom: 20px;
-    }
-    
-    .author-info a {
-      color: #fff;
-      margin-right: 10px;
-      text-decoration: none;
-    }
-    
-    .author-info a:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-  <img class="header-image" src="https://github.com/markstent/sonic-diffusion/raw/main/sonicdiffusion_logo.png" alt="Header Image">
-  
-  <div class="header-description">
-    <p>This page showcases sample Mel spectrogram images and their related audio files from the Sonic Diffusion project trained on melodic techno sound files. Feel free to explore the samples and listen to the audio files. For more details and source code, visit the 
-      
-    <p>Please note that the included files have been deliberately reduced in quality. Due to the utilization of mel spectrograms for image representation, the inherent "phase" component of the original audio files was lost during the conversion process. As a result, the "phase" information was reconstructed using interpolation techniques, which may introduce a noticeable "combing" effect in the audio playback. It is important to understand that this compromise was necessary to effectively work with the high-dimensional data inherent in mel spectrograms.</p>
-      <a href="https://github.com/markstent/sonic-diffusion">GitHub repository</a>.</p>
-  </div>
-  
-  <div class="author-info">
-    <a href="mailto:mark@markstent.co.za">Email</a>
-    <a href="https://www.linkedin.com/in/markstent">LinkedIn</a>
-    <a href="https://twitter.com/mrkstnt">Twitter</a>
-  </div>
-  
-  <div class="sample-container">
-    <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/1.png?raw=true" alt="Sample 1">
-    <div class="sample-description">
-      <h2>Sample 1</h2>
-      <audio controls>
-        <source src="samples/audio/1.mp3" type="audio/mpeg">
-      </audio>
-    </div>
-  </div>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mel Spectrogram Samples</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #000;
+        color: #fff;
+      }
 
-  <div class="sample-container">
-    <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/2.png?raw=true" alt="Sample 2">
-    <div class="sample-description">
-      <h2>Sample 2</h2>
-      <audio controls>
-        <source src="samples/audio/2.mp3" type="audio/mpeg">
-      </audio>
-    </div>
-  </div>
+      .header-image {
+        width: 100%;
+        max-width: 500px;
+        height: auto;
+        object-fit: cover;
+      }
 
-  <div class="sample-container">
-    <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/3.png?raw=true" alt="Sample 3">
-    <div class="sample-description">
-      <h2>Sample 3</h2>
-      <audio controls>
-        <source src="samples/audio/1.mp3" type="audio/mpeg">
-      </audio>
-    </div>
-  </div>
+      .header-description {
+        margin-bottom: 20px;
+      }
 
-  <div class="sample-container">
-    <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/4.png?raw=true" alt="Sample 4">
-    <div class="sample-description">
-      <h2>Sample 4</h2>
-      <audio controls>
-        <source src="samples/audio/4.mp3" type="audio/mpeg">
-      </audio>
-    </div>
-  </div>
+      .sample-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
 
-  <div class="sample-container">
-    <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/5.png?raw=true" alt="Sample 5">
-    <div class="sample-description">
-      <h2>Sample 5</h2>
-      <audio controls>
-        <source src="samples/audio/5.mp3" type="audio/mpeg">
-      </audio>
-    </div>
-  </div>
-  
+      .sample-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 20px;
+      }
 
-</body>
+      .sample-container img {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        margin-bottom: 10px;
+      }
+
+      .sample-description {
+        text-align: center;
+      }
+
+     
+
+      audio::-webkit-media-controls-play-button {
+        width: 20px;
+        height: 30px;
+      }
+
+      h1, h2, p, a {
+        color: #fff;
+        margin: 0;
+      }
+
+      .author-info {
+        margin-top: 20px;
+        text-align: center;
+      }
+
+      .author-info a {
+        color: #fff;
+        margin-right: 10px;
+        text-decoration: none;
+      }
+
+      .author-info a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img class="header-image" src="https://github.com/markstent/sonic-diffusion/raw/main/sonicdiffusion_logo.png" alt="Header Image">
+      <div class="header-description">
+        <p>This page showcases sample Mel spectrogram images and their related audio files from the Sonic Diffusion project trained on melodic techno sound files. Feel free to explore the samples and listen to the audio files. For more details and source code, visit the <a href="https://github.com/markstent/sonic-diffusion">GitHub repository</a>.</p>
+        <br>
+        <p>Please note that the included files have been deliberately reduced in quality. Due to the utilization of mel spectrograms for image representation, the inherent "phase" component of the original audio files was lost during the conversion process. As a result, the "phase" information was reconstructed using interpolation techniques, which may introduce a noticeable "combing" effect in the audio playback. It is important to understand that this compromise was necessary to effectively work with the high-dimensional data inherent in mel spectrograms.</p>
+      </div>
+    </header>
+    <main>
+      <div class="sample-grid">
+        <div class="sample-container">
+          <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/1.png?raw=true" alt="Sample 1">
+          <div class="sample-description">
+            <h2>Sample 1</h2>
+            <audio controls>
+              <source src="samples/audio/1.mp3" type="audio/mpeg">
+            </audio>
+          </div>
+        </div>
+        <div class="sample-container">
+          <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/2.png?raw=true" alt="Sample 2">
+          <div class="sample-description">
+            <h2>Sample 2</h2>
+            <audio controls>
+              <source src="samples/audio/2.mp3" type="audio/mpeg">
+            </audio>
+          </div>
+        </div>
+        <div class="sample-container">
+          <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/3.png?raw=true" alt="Sample 3">
+          <div class="sample-description">
+            <h2>Sample 3</h2>
+            <audio controls>
+              <source src="samples/audio/3.mp3" type="audio/mpeg">
+            </audio>
+          </div>
+        </div>
+        <div class="sample-container">
+          <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/4.png?raw=true" alt="Sample 4">
+          <div class="sample-description">
+            <h2>Sample 4</h2>
+            <audio controls>
+              <source src="samples/audio/4.mp3" type="audio/mpeg">
+            </audio>
+          </div>
+        </div>
+        <div class="sample-container">
+          <img src="https://github.com/markstent/sonic-diffusion/blob/main/samples/images/5.png?raw=true" alt="Sample 5">
+          <div class="sample-description">
+            <h2>Sample 5</h2>
+            <audio controls>
+              <source src="samples/audio/5.mp3" type="audio/mpeg">
+            </audio>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <div class="author-info">
+        <a href="mailto:mark@markstent.co.za">Email</a>
+        <a href="https://www.linkedin.com/in/markstent">LinkedIn</a>
+        <a href="https://twitter.com/mrkstnt">Twitter</a>
+      </div>
+    </footer>
+  </body>
 </html>
