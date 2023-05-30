@@ -459,8 +459,6 @@ def main(args):
 
     accelerator.end_training()
     
-    os.remove(param_artifact) #remove saved local optimzer file
-
     
 #________________ END TRAINING LOOP __________________________________
 
