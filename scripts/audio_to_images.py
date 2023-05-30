@@ -1,3 +1,32 @@
+"""
+Script to create a dataset of Mel spectrograms from a directory of audio files.
+
+Usage:
+    python audio_to_images.py [--input_dir INPUT_DIR] [--output_dir OUTPUT_DIR]
+                              [--resolution RESOLUTION] [--hop_length HOP_LENGTH]
+                              [--sample_rate SAMPLE_RATE] [--n_fft N_FFT]
+
+Arguments:
+    --input_dir INPUT_DIR:
+        The directory path where the audio files are located. Default is "/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/test".
+
+    --output_dir OUTPUT_DIR:
+        The directory path where the generated dataset will be saved. Default is "/Users/mark.stent/Dropbox/Data_Science/Python/sonic-diffusion/data/test/data".
+
+    --resolution RESOLUTION:
+        The resolution of the generated spectrograms. Can be provided as a single integer for a square resolution
+        or as a string in the format "width,height". Default is "256".
+
+    --hop_length HOP_LENGTH:
+        The hop length used in the Mel spectrogram calculation. Default is 512.
+
+    --sample_rate SAMPLE_RATE:
+        The sample rate of the audio files. Default is 22050.
+
+    --n_fft N_FFT:
+        The number of FFT points used in the Mel spectrogram calculation. Default is 2048.
+"""
+
 import argparse
 import io
 import logging
@@ -15,6 +44,16 @@ logger = logging.getLogger("audio_to_images")
 
 
 def main(args):
+    
+    """
+    Main function to convert audio files to Mel spectrograms and create a dataset.
+
+    Args:
+        args: An object containing the command-line arguments.
+
+    Returns:
+        None
+    """
     
     mel = Mel(
         x_res=args.resolution[0],
