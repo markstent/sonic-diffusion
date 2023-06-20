@@ -417,18 +417,10 @@ def main(args):
             # Save the model
             
             if (epoch + 1) % args.save_model_epochs == 0 or epoch == args.num_epochs - 1:
-                
-                # Create a temporary file to save model
-                with tempfile.NamedTemporaryFile(suffix=".pth") as tmp:
-                    # Save your model into the temporary file
-                    torch.save(model.state_dict(), tmp.name)
-
-                    # Create a wandb Artifact and add the model file
-                    artifact = wandb.Artifact('model', type='model')
-                    artifact.add_file(tmp.name)
+    
                     
                 #save model to local directory
-                #pipeline.save_pretrained(output_dir)
+                pipeline.save_pretrained(output_dir)
                 
                 # log wandb artifact
                 model_artifact = wandb.Artifact(
