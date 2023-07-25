@@ -2,3 +2,4 @@
 /wandb/*
 /artifacts/*
 /scripts/train_unet_original.py
+/.DS_Store
