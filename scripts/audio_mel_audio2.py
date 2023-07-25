@@ -1,30 +1,17 @@
-"""
-Module for converting audio to mel spectrogram and reconstructing audio from the spectrogram.
-
-Usage:
-    python audio_reconstruction.py [--audio_path AUDIO_PATH] [--target_folder TARGET_FOLDER]
-
-Arguments:
-    --audio_path AUDIO_PATH:
-        The path to the audio file or folder containing audio files.
-
-    --target_folder TARGET_FOLDER:
-        The path to the target folder to save the reconstructed audio files.
-"""
-
 import os
 import librosa
 import librosa.display
 import soundfile as sf
+import numpy as np
 from tqdm import tqdm
 import logging
 from pathlib import Path
-import matplotlib.pyplot as plt
-import numpy as np
+import skimage.io
+from skimage.transform import resize
 
 def convert_audio_to_reconstructed_audio(audio_path, target_folder):
     """
-    Convert audio to mel spectrogram and save the spectrogram image.
+    Convert audio to mel spectrogram and save the spectrogram image (256x256) for the first 5 seconds.
     Then, convert the spectrogram image back to audio and save the audio file.
 
     Args:
@@ -35,7 +22,7 @@ def convert_audio_to_reconstructed_audio(audio_path, target_folder):
         None
     """
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-    
+
     audio_path_converted = Path(audio_path)
 
     if os.path.isdir(audio_path_converted):
@@ -55,28 +42,46 @@ def convert_audio_to_reconstructed_audio(audio_path, target_folder):
         # Load audio
         audio, sr = librosa.load(audio_file)
 
-        # Convert audio to mel spectrogram
-        mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr)
-        
-        # Save the mel spectrogram as black and white image
-        mel_spectrogram_image_filename = os.path.splitext(os.path.basename(audio_file))[0] + '_spectrogram.png'
-        mel_spectrogram_image_path = os.path.join(target_folder, mel_spectrogram_image_filename)
-        plt.figure(figsize=(10, 4))
-        librosa.display.specshow(librosa.power_to_db(mel_spectrogram, ref=np.max), y_axis='mel', x_axis='time', cmap='gray')
-        plt.colorbar(format='%+2.0f dB')  # Add color bar for the mel spectrogram
-        plt.tight_layout()
-        plt.savefig(mel_spectrogram_image_path, bbox_inches='tight', pad_inches=0)
-        plt.close()
+        # Select the first 5 seconds of the audio
+        duration = 5  # Duration in seconds
+        audio_duration = librosa.get_duration(y=audio, sr=sr)
+        if audio_duration > duration:
+            audio = audio[:int(sr * duration)]  # Slice the audio array
 
-        # Convert mel spectrogram back to audio
-        reconstructed_audio = librosa.feature.inverse.mel_to_audio(mel_spectrogram)
+        print(f"Audio file: {audio_file}")
+        print(f"Original sampling rate: {sr}")
+        print(f"Original audio shape: {audio.shape}")
 
-        # Save the reconstructed audio as MP3
+        # Convert audio to magnitude spectrogram
+        spectrogram = np.abs(librosa.stft(y=audio))
+
+        # Save the spectrogram as 256x256 image
+        spectrogram_image_filename = os.path.splitext(os.path.basename(audio_file))[0] + '_spectrogram.png'
+        spectrogram_image_path = os.path.join(target_folder, spectrogram_image_filename)
+
+        # Resize spectrogram to 256x256
+        spectrogram_resized = resize(spectrogram, (256, 256), mode='reflect')
+
+        # Normalize spectrogram to 0-255 for skimage.io.imsave
+        spectrogram_norm = librosa.amplitude_to_db(spectrogram_resized, ref=np.max)
+        spectrogram_norm = (spectrogram_norm - spectrogram_norm.min()) / (spectrogram_norm.max() - spectrogram_norm.min()) * 255
+        spectrogram_norm = spectrogram_norm.astype(np.uint8)
+
+        # Save the spectrogram image using skimage.io.imsave
+        skimage.io.imsave(spectrogram_image_path, spectrogram_norm, cmap='gray')
+
+        # Convert spectrogram back to audio using the Griffin-Lim algorithm
+        reconstructed_audio = librosa.griffinlim(S=spectrogram_resized, n_iter=100)
+
+        # Save the reconstructed audio as MP3 with the original sampling rate
         reconstructed_audio_filename = os.path.splitext(os.path.basename(audio_file))[0] + '_reconstructed.mp3'
         reconstructed_audio_path = os.path.join(target_folder, reconstructed_audio_filename)
         sf.write(reconstructed_audio_path, reconstructed_audio, sr, format='mp3')
 
         logging.info(f"Conversion completed: {audio_file} -> {reconstructed_audio_path}")
+
+# Rest of the code remains the same
+
 
 
 
